@@ -32,6 +32,11 @@ def main() -> int:
     files = cm.collect(ROOT / spec["entry"])
     core_version = (ROOT / "core" / "version.txt").read_text(encoding="utf-8").strip()
 
+    # 変更点一覧は宣言したパスに限定する。限定しないと他品目のコミットまで載る。
+    lines = (ROOT / "build" / f"{product}.paths").read_text(encoding="utf-8").splitlines()
+    paths = [ln.strip() for ln in lines if ln.strip() and not ln.strip().startswith("#")]
+    other = "gtv" if product == "oar" else "oar"
+
     evidence = {
         "1_artifact": spec.get("output"),
         "2_provenance": {
@@ -47,7 +52,16 @@ def main() -> int:
         "4_test_results": {"suite": "tests/", "passed": True, "note": "PoC のダミー結果"},
         "5_changes_since": {
             "base": base,
-            "commits": git("log", "--no-merges", "--oneline", f"{base}..{tag}").splitlines()
+            "scope": paths,
+            "commits": git("log", "--no-merges", "--oneline", f"{base}..{tag}", "--", *paths).splitlines()
+            if base
+            else [],
+            "core_touched": git("diff", "--name-only", f"{base}..{tag}", "--", "core/").splitlines()
+            if base
+            else [],
+            "other_product_touched": git(
+                "diff", "--name-only", f"{base}..{tag}", "--", f"products/{other}/"
+            ).splitlines()
             if base
             else [],
         },
