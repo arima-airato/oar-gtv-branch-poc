@@ -1,0 +1,36 @@
+name: core-drift
+
+# 運用ルール 2節 ①／7節 STEP 1：
+# cherry-pick で品目を選り分けていた旧 develop（濾し器）に取り込まれていない
+# Core の変更がないかを定期的に見る。統一が終わるまでの当座の監視。
+
+on:
+  schedule:
+    - cron: "0 0 * * 1"   # 毎週月曜
+  workflow_dispatch:
+    inputs:
+      old_branch:
+        description: 旧 develop（濾し器）のブランチ名
+        default: legacy/develop-oar-filter
+      new_branch:
+        description: 開発の中心のブランチ名
+        default: develop
+
+jobs:
+  drift:
+    name: Core の乖離を見る
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: 乖離チェック
+        run: |
+          old="${{ github.event.inputs.old_branch || 'legacy/develop-oar-filter' }}"
+          new="${{ github.event.inputs.new_branch || 'develop' }}"
+          git fetch origin "$old:$old" "$new:$new" 2>/dev/null || true
+          python tools/core_drift.py "$old" "$new" | tee -a "$GITHUB_STEP_SUMMARY"
+          exit ${PIPESTATUS[0]}

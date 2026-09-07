@@ -1,0 +1,6 @@
+# OAR（AutoContouring OAR）の実行ファイルに入ってよいパスの宣言
+# 運用ルール 6節 ①。ここに書いていないパスのファイルが exe に入ったら CI が落ちる。
+core/
+products/oar/
+build/oar.spec
+build/oar.paths

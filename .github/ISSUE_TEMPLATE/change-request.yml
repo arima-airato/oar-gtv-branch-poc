@@ -1,0 +1,41 @@
+name: 変更の起票
+description: 着手前に変更区分を決めるためのテンプレート
+title: "[変更] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        着手前に、その変更がどれに当たるかを決めます。ここが決まればブランチは自動的に決まります。
+        迷ったら QA に確認してから着手してください。
+  - type: textarea
+    id: what
+    attributes:
+      label: 何を、なぜ変えるか
+    validations:
+      required: true
+  - type: dropdown
+    id: classification
+    attributes:
+      label: 変更区分
+      options:
+        - 一部変更申請が必要（integration/ で作業）
+        - 軽微変更で足りる（develop で作業）
+        - 出荷済み版の是正（release/ で作業）
+        - 届出不要
+        - 未確定（QA 確認待ち）
+    validations:
+      required: true
+  - type: dropdown
+    id: product
+    attributes:
+      label: 対象
+      options:
+        - OAR のみ
+        - GTV のみ
+        - Core（両品目に影響）
+    validations:
+      required: true
+  - type: input
+    id: qa
+    attributes:
+      label: QA 確認者 / 確認日

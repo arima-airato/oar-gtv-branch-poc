@@ -1,0 +1,31 @@
+name: product-isolation
+
+# 運用ルール 6節 ②：実行ファイルに他品目のコードが入らないことを機械的に確認する。
+# これが通ることが、ブランチで品目を分けなくてよいことの根拠になる。
+
+on:
+  push:
+    branches: [develop, "integration/**", "release/**"]
+  pull_request:
+
+jobs:
+  verify:
+    name: 品目分離の検証 (${{ matrix.product }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        product: [oar, gtv]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: 宣言と実体の突き合わせ
+        run: |
+          echo "## ${{ matrix.product }} の品目分離検証" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          python build/verify_isolation.py ${{ matrix.product }} | tee -a "$GITHUB_STEP_SUMMARY"
+          status=${PIPESTATUS[0]}
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          exit $status

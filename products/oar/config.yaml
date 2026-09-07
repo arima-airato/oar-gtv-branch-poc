@@ -1,0 +1,6 @@
+product: oar
+display_name: AutoContouring (OAR)
+class: 3
+model:
+  weights: oar_unet_v3.pt
+  patch: [128, 128, 64]

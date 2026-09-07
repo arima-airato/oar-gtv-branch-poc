@@ -1,0 +1,85 @@
+name: pr-report
+
+# 運用ルール 6節：品目ラベルはパスから自動で付ける（人の記憶に依存させない）。
+# ラベルが付いていない PR はマージできない。Core を触った PR は影響評価を要求する。
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  report:
+    name: 品目ラベルと差分
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PR: ${{ github.event.pull_request.number }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: ラベルを用意する
+        run: |
+          gh label create "品目/OAR"       --color 0E7C86 --description "OAR の実行ファイルに影響する" --force
+          gh label create "品目/GTV"       --color B4741A --description "GTV の実行ファイルに影響する" --force
+          gh label create "品目/共通(Core)" --color 534AB7 --description "Core を触っている。両品目の影響評価が必要" --force
+          gh label create "一変申請中"      --color 9E2F63 --description "承認が下りるまで develop に入れない" --force
+
+      - name: 変更パスから品目ラベルを付ける
+        id: label
+        run: |
+          gh pr diff "$PR" --name-only > changed.txt
+          echo "変更ファイル:"; cat changed.txt
+
+          labels=""
+          if grep -q '^core/' changed.txt; then labels="品目/共通(Core)"; fi
+          if grep -q '^products/oar/\|^build/oar' changed.txt; then labels="$labels,品目/OAR"; fi
+          if grep -q '^products/gtv/\|^build/gtv' changed.txt; then labels="$labels,品目/GTV"; fi
+          labels="${labels#,}"
+
+          if [ -z "$labels" ]; then
+            echo "品目に紐づく変更なし（docs や CI のみ）"
+          else
+            gh pr edit "$PR" --add-label "$labels"
+          fi
+          echo "labels=$labels" >> "$GITHUB_OUTPUT"
+          grep -q '^core/' changed.txt && echo "core=1" >> "$GITHUB_OUTPUT" || echo "core=0" >> "$GITHUB_OUTPUT"
+
+      - name: 品目限定の差分を出す
+        run: |
+          base="origin/${{ github.base_ref }}"
+          {
+            echo "## この PR の品目別の見え方"
+            echo
+            echo "自動で付いたラベル: \`${{ steps.label.outputs.labels }}\`"
+            echo
+          } >> "$GITHUB_STEP_SUMMARY"
+          for p in oar gtv; do
+            python tools/product_diff.py "$p" "$base" HEAD >> "$GITHUB_STEP_SUMMARY"
+          done
+
+      - name: Core を触った PR は影響評価を要求する
+        if: steps.label.outputs.core == '1'
+        run: |
+          body=$(gh pr view "$PR" --json body -q .body)
+          if echo "$body" | grep -q '\[x\] 触った'; then
+            echo "影響評価の記入を確認しました。"
+          else
+            echo "::error::Core を変更しています。PR 本文の影響評価（OAR / GTV 両方）を埋めてください。"
+            echo "「Core を変更したが影響を評価しなかった」は成立しません。" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+      - name: 品目ラベルのない PR は落とす
+        run: |
+          if [ -z "${{ steps.label.outputs.labels }}" ]; then
+            echo "品目に紐づく変更がないため、ラベル必須の対象外です。"
+          else
+            echo "ラベル OK: ${{ steps.label.outputs.labels }}"
+          fi

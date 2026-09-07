@@ -1,0 +1,62 @@
+name: release-evidence
+
+# 運用ルール 5節：出荷時に一緒に残す5点セットを、タグを打った時点で自動生成する。
+# 自動テストの結果は初期設定では一定期間で消えるため、保管期間を長く取る。
+
+on:
+  push:
+    tags:
+      - "oar/v*"
+      - "gtv/v*"
+
+permissions:
+  contents: read
+
+jobs:
+  evidence:
+    name: 出荷記録の生成
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 品目とひとつ前のタグを決める
+        id: ctx
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+          product="${tag%%/*}"
+          prev=$(git tag -l "$product/v*" --sort=-v:refname | grep -v "^$tag$" | head -1)
+          echo "tag=$tag"        >> "$GITHUB_OUTPUT"
+          echo "product=$product" >> "$GITHUB_OUTPUT"
+          echo "prev=$prev"       >> "$GITHUB_OUTPUT"
+
+      - name: 混入していないことを確認する
+        run: python build/verify_isolation.py "${{ steps.ctx.outputs.product }}"
+
+      - name: 5点セットを生成する
+        run: |
+          python tools/release_evidence.py \
+            "${{ steps.ctx.outputs.product }}" \
+            "${{ steps.ctx.outputs.prev }}" \
+            "${{ steps.ctx.outputs.tag }}"
+
+      - name: 前回承認版からの差分（品目限定）
+        run: |
+          if [ -n "${{ steps.ctx.outputs.prev }}" ]; then
+            python tools/product_diff.py \
+              "${{ steps.ctx.outputs.product }}" \
+              "${{ steps.ctx.outputs.prev }}" \
+              "${{ steps.ctx.outputs.tag }}" | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo "基準点のタグです（比較対象なし）。" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-evidence-${{ steps.ctx.outputs.product }}
+          path: release-evidence/
+          retention-days: 90

@@ -1,0 +1,8 @@
+# レビュアーを自動指名する（運用ルール 8節）。
+# 実運用ではソフト責任者と QA のチームを割り当てる。PoC では個人アカウント1つ。
+
+*                       @arima-airato
+core/                   @arima-airato
+build/                  @arima-airato
+.github/workflows/      @arima-airato
+docs/                   @arima-airato

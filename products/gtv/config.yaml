@@ -1,0 +1,6 @@
+product: gtv
+display_name: AutoContouring (GTV)
+class: 3
+model:
+  weights: gtv_unet_v2.pt
+  patch: [96, 96, 48]

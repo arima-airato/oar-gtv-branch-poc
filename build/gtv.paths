@@ -1,0 +1,5 @@
+# GTV（AutoContouring GTV）の実行ファイルに入ってよいパスの宣言
+core/
+products/gtv/
+build/gtv.spec
+build/gtv.paths
