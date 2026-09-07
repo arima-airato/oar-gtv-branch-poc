@@ -5,5 +5,6 @@ ORGANS = [
     "SpinalCord",
     "Parotid_L",
     "Parotid_R",
+    "Esophagus",
     "Mandible",
 ]
