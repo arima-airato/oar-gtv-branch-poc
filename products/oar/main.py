@@ -6,13 +6,19 @@ build/oar.paths の宣言が正しいかどうかを CI がここから検証す
 
 from core.io import dicom_reader
 from core.segmentation import postprocess, preprocess
-from products.oar import organs
+from products.oar import organs, two_stage
+
+
+TWO_STAGE = True
 
 
 def run(series_path: str) -> dict:
     volume = dicom_reader.read_series(series_path)
     preprocess.normalize(volume)
     preprocess.resample(volume)
+
+    if TWO_STAGE:
+        return two_stage.run({"series_uid": volume.series_uid})
 
     result = {}
     for organ in organs.ORGANS:
