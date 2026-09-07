@@ -12,7 +12,7 @@ def run(series_path: str) -> dict:
     result = {}
     for target in tumor.TARGETS:
         mask = {"label": target}
-        result[target] = postprocess.smooth(mask)
+        result[target] = tumor.with_margin(postprocess.smooth(mask))
     return result
 
 
