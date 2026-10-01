@@ -6,6 +6,7 @@ build/oar.paths の宣言が正しいかどうかを CI がここから検証す
 
 from core.io import dicom_reader
 from core.segmentation import postprocess, preprocess
+from products.gtv import tumor  # ← 他品目のコードを参照してしまっている
 from products.oar import organs
 
 
@@ -14,8 +15,10 @@ def run(series_path: str) -> dict:
     preprocess.normalize(volume)
     preprocess.resample(volume)
 
+    targets = organs.ORGANS + tumor.TARGETS
+
     result = {}
-    for organ in organs.ORGANS:
+    for organ in targets:
         mask = {"label": organ}
         mask = postprocess.largest_component(mask)
         result[organ] = postprocess.smooth(mask)
